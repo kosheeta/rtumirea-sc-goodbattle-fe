@@ -526,19 +526,55 @@ function BattleRoomPage() {
   }, [])
 
   useEffect(() => {
-    function block(event: ClipboardEvent) {
-      event.preventDefault()
-      alert('Копирование и вставка запрещены')
+    const clipboardToken = crypto.randomUUID()
+    const clipboardFormat = 'application/x-good-battle'
+
+    function handleCopy(e: ClipboardEvent) {
+      const selection = window.getSelection()?.toString()
+
+      if (selection && e.clipboardData) {
+        e.clipboardData.setData('text/plain', selection)
+        e.clipboardData.setData(
+          clipboardFormat,
+          JSON.stringify({
+            text: selection,
+            token: clipboardToken,
+          }),
+        )
+      }
+
+      e.preventDefault()
     }
 
-    document.addEventListener('copy', block, { capture: true })
-    document.addEventListener('cut', block, { capture: true })
-    document.addEventListener('paste', block, { capture: true })
+    function handlePaste(e: ClipboardEvent) {
+      const customData = e.clipboardData?.getData(clipboardFormat)
+
+      if (!customData) {
+        e.preventDefault()
+        alert('Вставка разрешена только из этой страницы')
+        return
+      }
+
+      try {
+        const data = JSON.parse(customData)
+
+        if (data.token !== clipboardToken) {
+          e.preventDefault()
+          alert('Вставка разрешена только из этой страницы')
+        }
+      } catch {
+        e.preventDefault()
+      }
+    }
+
+    document.addEventListener('copy', handleCopy, { capture: true })
+    document.addEventListener('cut', handleCopy, { capture: true })
+    document.addEventListener('paste', handlePaste, { capture: true })
 
     return () => {
-      document.removeEventListener('copy', block, { capture: true })
-      document.removeEventListener('cut', block, { capture: true })
-      document.removeEventListener('paste', block, { capture: true })
+      document.removeEventListener('copy', handleCopy, { capture: true })
+      document.removeEventListener('cut', handleCopy, { capture: true })
+      document.removeEventListener('paste', handlePaste, { capture: true })
     }
   }, [])
 
